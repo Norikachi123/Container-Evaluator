@@ -15,8 +15,14 @@ interface ReviewProps {
   lang: Language;
 }
 
+// Display formatter (UI) - uses symbol
 const formatVND = (amount: number) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+};
+
+// PDF formatter - uses "VND" text to avoid encoding errors in standard PDF fonts
+const formatVNDForPDF = (amount: number) => {
+    return new Intl.NumberFormat('vi-VN').format(amount) + ' VND';
 };
 
 export const Review: React.FC<ReviewProps> = ({ inspectionId, user, onBack, onNextContainer, lang }) => {
@@ -99,22 +105,24 @@ export const Review: React.FC<ReviewProps> = ({ inspectionId, user, onBack, onNe
     const margin = 15;
     const contentWidth = pageWidth - (margin * 2);
     
+    // Use Times New Roman ('times')
+    
     // --- Page 1: Summary ---
-    doc.setFont("helvetica", "bold");
+    doc.setFont("times", "bold");
     doc.setFontSize(22);
     doc.text(`Inspection Report`, margin, 20);
     
     doc.setFontSize(16);
     doc.text(inspection.containerNumber, margin, 30);
     
-    doc.setFont("helvetica", "normal");
+    doc.setFont("times", "normal");
     doc.setFontSize(10);
     doc.text(`Inspector: ${inspection.inspectorId}`, margin, 45);
     doc.text(`Date: ${new Date(inspection.timestamp).toLocaleString()}`, margin, 50);
     doc.text(`Location: ${inspection.location}`, margin, 55);
     
     // Status
-    doc.setFont("helvetica", "bold");
+    doc.setFont("times", "bold");
     doc.text(`Status: ${inspection.status}`, margin, 65);
     
     // Financials Box
@@ -129,23 +137,23 @@ export const Review: React.FC<ReviewProps> = ({ inspectionId, user, onBack, onNe
       doc.text("Cost Estimate", margin + 5, y + 10);
       
       doc.setFontSize(10);
-      doc.setFont("helvetica", "normal");
+      doc.setFont("times", "normal");
       doc.text(`Subtotal:`, margin + 5, y + 20);
-      doc.text(`${formatVND(inspection.quote.subtotal)}`, pageWidth - margin - 5, y + 20, { align: "right" });
+      // Use PDF safe currency format
+      doc.text(`${formatVNDForPDF(inspection.quote.subtotal)}`, pageWidth - margin - 5, y + 20, { align: "right" });
       
       doc.text(`Tax (10%):`, margin + 5, y + 27);
-      doc.text(`${formatVND(inspection.quote.tax)}`, pageWidth - margin - 5, y + 27, { align: "right" });
+      doc.text(`${formatVNDForPDF(inspection.quote.tax)}`, pageWidth - margin - 5, y + 27, { align: "right" });
       
-      doc.setFont("helvetica", "bold");
+      doc.setFont("times", "bold");
       doc.text(`Total:`, margin + 5, y + 35);
-      doc.text(`${formatVND(inspection.quote.total)}`, pageWidth - margin - 5, y + 35, { align: "right" });
+      doc.text(`${formatVNDForPDF(inspection.quote.total)}`, pageWidth - margin - 5, y + 35, { align: "right" });
       
       doc.setTextColor(0, 0, 0); // Reset color
     }
     
     // --- Detailed Pages: Images & Defects ---
     
-    // Filter only sides that have images
     const sidesWithImages = inspection.images;
 
     sidesWithImages.forEach((img) => {
@@ -153,41 +161,33 @@ export const Review: React.FC<ReviewProps> = ({ inspectionId, user, onBack, onNe
       let yPos = 20;
       
       // 1. Header: Side Name
-      doc.setFont("helvetica", "bold");
+      doc.setFont("times", "bold");
       doc.setFontSize(14);
       doc.text(tSide(lang, img.side), margin, yPos);
       yPos += 10;
       
       // 2. Image
-      // fix image height to 100 units to fit nicely, width scaled automatically by aspect ratio
-      // Since we can't easily get aspect ratio from base64 in jsPDF without loading it, 
-      // we constrain by width and let height adjust, or constrain by height. 
-      // constrain by width to ensure it fits the page.
       const imgHeight = 100; 
       doc.addImage(img.url, 'JPEG', margin, yPos, contentWidth, imgHeight, undefined, 'FAST');
       
-      // 3. Bounding Boxes on PDF
+      // 3. Bounding Boxes
       const sideDefects = inspection.defects.filter(d => d.imageId === img.id && d.status !== ReviewStatus.REJECTED);
       
       sideDefects.forEach((d, i) => {
         const { ymin, xmin, ymax, xmax } = d.boundingBox;
         
-        // Convert % percentages to PDF coordinate system relative to the image
         const pdfBoxX = margin + (xmin / 100) * contentWidth;
         const pdfBoxY = yPos + (ymin / 100) * imgHeight;
         const pdfBoxW = ((xmax - xmin) / 100) * contentWidth;
         const pdfBoxH = ((ymax - ymin) / 100) * imgHeight;
         
-        // Draw Box
-        doc.setDrawColor(220, 38, 38); // Red color
+        doc.setDrawColor(220, 38, 38); 
         doc.setLineWidth(0.5);
         doc.rect(pdfBoxX, pdfBoxY, pdfBoxW, pdfBoxH);
         
-        // Draw Label Background
         doc.setFillColor(220, 38, 38);
         doc.rect(pdfBoxX, pdfBoxY - 4, 6, 4, 'F');
         
-        // Draw Label Number
         doc.setTextColor(255, 255, 255);
         doc.setFontSize(6);
         doc.text(`${i + 1}`, pdfBoxX + 1, pdfBoxY - 1);
@@ -195,32 +195,31 @@ export const Review: React.FC<ReviewProps> = ({ inspectionId, user, onBack, onNe
       
       yPos += imgHeight + 10;
       
-      // 4. Defect List Table
+      // 4. Defect List
       if (sideDefects.length > 0) {
         doc.setTextColor(0, 0, 0);
         doc.setFontSize(10);
-        doc.setFont("helvetica", "bold");
+        doc.setFont("times", "bold");
         doc.text("Defects Found:", margin, yPos);
         yPos += 8;
         
         sideDefects.forEach((d, i) => {
-           doc.setFont("helvetica", "normal");
+           doc.setFont("times", "normal");
            doc.setFontSize(10);
            
-           const cost = d.repairCost ? formatVND(d.repairCost) : formatVND(0);
+           const cost = d.repairCost ? formatVNDForPDF(d.repairCost) : formatVNDForPDF(0);
+           // Clean string construction to avoid extra spaces
            const label = `${i + 1}. [${tDefect(lang, d.code)}] ${d.severity} - ${cost}`;
            
            doc.text(label, margin, yPos);
            
-           // Description on next line
            doc.setFontSize(9);
-           doc.setTextColor(80, 80, 80); // Dark gray
+           doc.setTextColor(80, 80, 80); 
            doc.text(`   ${d.description}`, margin, yPos + 5);
            
-           doc.setTextColor(0, 0, 0); // Reset
+           doc.setTextColor(0, 0, 0);
            yPos += 12;
            
-           // Page break check if list is too long
            if (yPos > 270) {
                doc.addPage();
                yPos = 20;
@@ -229,7 +228,7 @@ export const Review: React.FC<ReviewProps> = ({ inspectionId, user, onBack, onNe
       } else {
           doc.setTextColor(100, 100, 100);
           doc.setFontSize(10);
-          doc.setFont("helvetica", "italic");
+          doc.setFont("times", "italic");
           doc.text("No defects detected on this side.", margin, yPos + 5);
       }
     });
@@ -291,7 +290,6 @@ export const Review: React.FC<ReviewProps> = ({ inspectionId, user, onBack, onNe
         
         {/* Image Area */}
         <div className="flex-1 bg-slate-900 relative flex flex-col overflow-hidden">
-             {/* View Tabs */}
              <div className="flex overflow-x-auto bg-slate-800 border-b border-slate-700 p-1 space-x-1 scrollbar-hide">
                 {inspection.images.map(img => (
                     <button

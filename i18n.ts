@@ -38,6 +38,7 @@ export const TRANSLATIONS = {
     login_title: "ContainerAI Inspector",
     login_subtitle: "Automated Defect Detection & Review",
     add_containers: "Add Containers",
+    next_containers: "Next Container",
     iicl_tags: "IICL Tags",
     
     // Quote / Pricing
@@ -132,6 +133,7 @@ export const TRANSLATIONS = {
     login_title: "ContainerAI Inspector",
     login_subtitle: "Tự động phát hiện lỗi & Quy trình duyệt",
     add_containers: "Thêm containers",
+    next_containers: "Container tiếp theo",
     iicl_tags: "Thẻ IICL",
     
     // Quote / Pricing

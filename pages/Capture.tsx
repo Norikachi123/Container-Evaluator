@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Camera, Loader2, ArrowRight, Plus, X } from 'lucide-react';
 import { analyzeImage, readContainerNumber } from '../services/geminiService';
@@ -14,13 +15,19 @@ interface CaptureProps {
 }
 
 const REQUIRED_SIDES: ContainerSide[] = [
-    'DOOR', // Placed first as it likely has the ID
-    'FRONT_EXT', 'FRONT_INT', 
-    'REAR_EXT', 'REAR_INT', 
-    'LEFT_EXT', 'LEFT_INT', 
-    'RIGHT_EXT', 'RIGHT_INT', 
-    'ROOF_EXT', 'ROOF_INT', 
-    'FLOOR'
+    'DOOR_EXT', // Door Wall (Exterior) - Primary spot for OCR
+    'SIDE_1_EXT', 
+    'SIDE_2_EXT', 
+    'FRONT_EXT', 
+    'ROOF_EXT', 
+    'UNDER_EXT',
+    
+    'DOOR_INT',
+    'SIDE_1_INT',
+    'SIDE_2_INT',
+    'FRONT_INT',
+    'ROOF_INT',
+    'FLOOR_INT'
 ];
 
 export const Capture: React.FC<CaptureProps> = ({ user, onComplete, lang, initialContainerNumber }) => {
@@ -45,10 +52,8 @@ export const Capture: React.FC<CaptureProps> = ({ user, onComplete, lang, initia
         const base64 = reader.result as string;
         setImages(prev => ({ ...prev, [side]: base64 }));
 
-        // Auto-OCR if uploading DOOR. 
-        // We check !initialContainerNumber to avoid overwriting a queued item ID.
-        // We removed !containerNum to allow overwriting manual input if the OCR is confident.
-        if (side === 'DOOR' && !initialContainerNumber) {
+        // Auto-OCR if uploading DOOR_EXT (Door Wall) and no container number is set
+        if (side === 'DOOR_EXT' && !initialContainerNumber) {
              setIsScanning(true);
              try {
                  const result = await readContainerNumber(base64);
@@ -191,7 +196,7 @@ export const Capture: React.FC<CaptureProps> = ({ user, onComplete, lang, initia
                             </>
                         ) : (
                             <label className="cursor-pointer w-full h-full flex flex-col items-center justify-center p-2">
-                                <Camera className={`w-8 h-8 mb-2 ${side === 'DOOR' ? 'text-blue-500' : 'text-slate-400'}`} />
+                                <Camera className={`w-8 h-8 mb-2 ${side === 'DOOR_EXT' ? 'text-blue-500' : 'text-slate-400'}`} />
                                 <span className="text-xs font-medium text-slate-600 text-center break-words w-full">{tSide(lang, side)}</span>
                                 <span className="text-[10px] text-slate-400 mt-1 text-center">+ {t(lang, 'upload_photo')}</span>
                                 <input 

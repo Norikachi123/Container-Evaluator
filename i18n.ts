@@ -59,18 +59,19 @@ export const TRANSLATIONS = {
     id_not_found: "ID not found",
     
     sides: {
-      FRONT_EXT: "Front (Ext)",
-      FRONT_INT: "Front (Int)",
-      REAR_EXT: "Rear (Ext)",
-      REAR_INT: "Rear (Int)",
-      LEFT_EXT: "Left (Ext)",
-      LEFT_INT: "Left (Int)",
-      RIGHT_EXT: "Right (Ext)",
-      RIGHT_INT: "Right (Int)",
-      ROOF_EXT: "Roof (Ext)",
-      ROOF_INT: "Roof (Int)",
-      FLOOR: "Floor",
-      DOOR: "Door(s)"
+      DOOR_EXT: "Door Wall (Ext)",
+      SIDE_1_EXT: "Side Wall 1 (Left)",
+      SIDE_2_EXT: "Side Wall 2 (Right)",
+      FRONT_EXT: "Front Wall",
+      ROOF_EXT: "Roof",
+      UNDER_EXT: "Floor/Underside",
+      
+      DOOR_INT: "Inside Door Wall",
+      SIDE_1_INT: "Inside Side Wall 1",
+      SIDE_2_INT: "Inside Side Wall 2",
+      FRONT_INT: "Inside Front Wall",
+      ROOF_INT: "Inside Roof",
+      FLOOR_INT: "Inside Floor"
     },
     // ... existing defect codes ...
      defects: {
@@ -151,18 +152,19 @@ export const TRANSLATIONS = {
     id_not_found: "Không tìm thấy số",
 
     sides: {
-      FRONT_EXT: "Mặt trước (Ngoài)",
-      FRONT_INT: "Mặt trước (Trong)",
-      REAR_EXT: "Mặt sau (Ngoài)",
-      REAR_INT: "Mặt sau (Trong)",
-      LEFT_EXT: "Bên trái (Ngoài)",
-      LEFT_INT: "Bên trái (Trong)",
-      RIGHT_EXT: "Bên phải (Ngoài)",
-      RIGHT_INT: "Bên phải (Trong)",
-      ROOF_EXT: "Mái (Ngoài)",
-      ROOF_INT: "Mái (Trong)",
-      FLOOR: "Sàn",
-      DOOR: "Cửa"
+      DOOR_EXT: "Vách cửa (Ngoài)",
+      SIDE_1_EXT: "Vách dọc 1 (Trái)",
+      SIDE_2_EXT: "Vách dọc 2 (Phải)",
+      FRONT_EXT: "Vách trước",
+      ROOF_EXT: "Nóc",
+      UNDER_EXT: "Gầm sàn",
+      
+      DOOR_INT: "Vách cửa (Trong)",
+      SIDE_1_INT: "Vách dọc 1 (Trong)",
+      SIDE_2_INT: "Vách dọc 2 (Trong)",
+      FRONT_INT: "Vách trước (Trong)",
+      ROOF_INT: "Nóc (Trong)",
+      FLOOR_INT: "Sàn (Trong)"
     },
     // ... existing defects ...
     defects: {

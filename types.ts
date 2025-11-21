@@ -46,14 +46,22 @@ export enum ReviewStatus {
   REJECTED = 'REJECTED'
 }
 
-// Revert sides to standard, no ID_PLATE
+// Updated Container Sides based on specific request
 export type ContainerSide = 
-  | 'FRONT_EXT' | 'FRONT_INT' 
-  | 'REAR_EXT' | 'REAR_INT' 
-  | 'LEFT_EXT' | 'LEFT_INT' 
-  | 'RIGHT_EXT' | 'RIGHT_INT' 
-  | 'ROOF_EXT' | 'ROOF_INT' 
-  | 'FLOOR' | 'DOOR';
+  // Exterior
+  | 'SIDE_1_EXT' // Side Wall 1 (Left)
+  | 'SIDE_2_EXT' // Side Wall 2 (Right)
+  | 'FRONT_EXT'  // Front Wall
+  | 'DOOR_EXT'   // Door Wall
+  | 'ROOF_EXT'   // Roof
+  | 'UNDER_EXT'  // Floor/Underside
+  // Interior
+  | 'SIDE_1_INT' // Inside Side Wall 1
+  | 'SIDE_2_INT' // Inside Side Wall 2
+  | 'FRONT_INT'  // Inside Front Wall
+  | 'DOOR_INT'   // Inside Door Wall
+  | 'ROOF_INT'   // Inside Roof
+  | 'FLOOR_INT'; // Inside Floor
 
 export interface BoundingBox {
   ymin: number;

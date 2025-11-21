@@ -45,7 +45,14 @@ export enum ReviewStatus {
   REJECTED = 'REJECTED'
 }
 
-export type ContainerSide = 'FRONT' | 'REAR' | 'LEFT' | 'RIGHT' | 'ROOF' | 'FLOOR' | 'DOOR';
+// Updated sides to include Interior/Exterior for walls and roof
+export type ContainerSide = 
+  | 'FRONT_EXT' | 'FRONT_INT' 
+  | 'REAR_EXT' | 'REAR_INT' 
+  | 'LEFT_EXT' | 'LEFT_INT' 
+  | 'RIGHT_EXT' | 'RIGHT_INT' 
+  | 'ROOF_EXT' | 'ROOF_INT' 
+  | 'FLOOR' | 'DOOR';
 
 export interface BoundingBox {
   ymin: number;

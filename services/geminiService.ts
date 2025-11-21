@@ -18,7 +18,7 @@ export const analyzeImage = async (
     throw new Error("API Key missing");
   }
 
-  const ai = new GoogleGenAI({ apiKey: import.meta.env.API_KEY });
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
   const prompt = `
     You are an expert IICL certified shipping container inspector.
@@ -116,5 +116,43 @@ export const analyzeImage = async (
   } catch (error) {
     console.error(`Gemini Analysis Failed for ${side}:`, error);
     return [];
+  }
+};
+
+export const readContainerNumber = async (base64Image: string): Promise<string | null> => {
+  if (!process.env.API_KEY) {
+    throw new Error("API Key missing");
+  }
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  
+  const prompt = `
+    Analyze this image and identify the Shipping Container Number.
+    Standard format is 4 letters (Owner Code) followed by 6 digits (Serial Number) and 1 digit (Check Digit). 
+    Example: ABCD 123456 7
+    
+    Return ONLY the alphanumeric string without spaces or special characters. 
+    If you cannot clearly see a container number, return "null".
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: MODEL_NAME,
+      contents: {
+        parts: [
+            { inlineData: { mimeType: 'image/jpeg', data: cleanBase64(base64Image) } },
+            { text: prompt }
+        ]
+      }
+    });
+    
+    const text = response.text?.trim();
+    if (!text || text.toLowerCase() === 'null') return null;
+    
+    // Basic cleanup: remove spaces, dashes
+    const cleaned = text.replace(/[^A-Z0-9]/gi, '');
+    return cleaned;
+  } catch (error) {
+    console.error("OCR Failed:", error);
+    return null;
   }
 };

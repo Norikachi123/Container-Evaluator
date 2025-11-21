@@ -79,11 +79,7 @@ export function App() {
         </div>
 
         <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center">
-            <div className="w-16 h-16 bg-blue-600 rounded-xl mx-auto mb-6 flex items-center justify-center text-white">
-                <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                </svg>
-            </div>
+              <img src={"./logo.png"} />
             <h1 className="text-2xl font-bold text-slate-800 mb-2">{t(lang, 'login_title')}</h1>
             <p className="text-slate-500 mb-8">{t(lang, 'login_subtitle')}</p>
             

@@ -30,7 +30,7 @@ export const Header: React.FC<HeaderProps> = ({
           className="flex items-center space-x-2 cursor-pointer"
           onClick={() => onNavigate("dashboard")}
         >
-           <img src={"./logo.png"}  width="50" height="auto"/>
+           <img src={"https://github.com/TPJamesH/Container-Evaluator/raw/refs/heads/main/logo.png"}  width="50" height="auto"/>
           <span className="font-bold text-xl tracking-tight">ContainerAI</span>
         </div>
 

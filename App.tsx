@@ -79,7 +79,7 @@ export function App() {
         </div>
 
         <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center">
-              <img src={"./logo.png"} />
+              <img src={"https://github.com/TPJamesH/Container-Evaluator/raw/refs/heads/main/logo.png"} />
             <h1 className="text-2xl font-bold text-slate-800 mb-2">{t(lang, 'login_title')}</h1>
             <p className="text-slate-500 mb-8">{t(lang, 'login_subtitle')}</p>
             

@@ -1,3 +1,4 @@
+
 import { Language } from './types';
 
 export const TRANSLATIONS = {
@@ -50,7 +51,7 @@ export const TRANSLATIONS = {
     parts: "Parts",
     hours: "hrs",
     save_changes: "Save Changes",
-    base_price: "Base Price (Parts)",
+    base_price: "Base Price (VND)",
     labor_hours: "Labor Hours",
     // OCR
     scan_id: "Scan ID",
@@ -142,7 +143,7 @@ export const TRANSLATIONS = {
     parts: "Vật tư",
     hours: "giờ",
     save_changes: "Lưu thay đổi",
-    base_price: "Giá vật tư",
+    base_price: "Giá vật tư (VND)",
     labor_hours: "Giờ công",
     // OCR
     scan_id: "Quét số Cont",

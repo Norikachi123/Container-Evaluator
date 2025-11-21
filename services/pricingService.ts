@@ -1,3 +1,4 @@
+
 import { Inspection, Defect, PricingRule, Quote, QuoteStatus } from '../types';
 import { getPricingRules } from './dbService';
 import { DEFAULT_LABOR_RATE, TAX_RATE } from '../constants';
@@ -41,7 +42,7 @@ export const generateQuote = (inspection: Inspection): Quote => {
     subtotal,
     tax,
     total,
-    currency: 'USD',
+    currency: 'VND',
     status: QuoteStatus.DRAFT,
     generatedAt: new Date().toISOString()
   };

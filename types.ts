@@ -1,3 +1,4 @@
+
 export enum UserRole {
   INSPECTOR = 'INSPECTOR',
   REVIEWER = 'REVIEWER',
@@ -94,7 +95,7 @@ export interface Quote {
   subtotal: number;
   tax: number;
   total: number;
-  currency: 'USD' | 'VND';
+  currency: 'VND';
   status: QuoteStatus;
   generatedAt: string;
   approvedBy?: string;

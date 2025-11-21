@@ -1,13 +1,18 @@
+
 import React, { useState, useEffect } from 'react';
 import { getInspections } from '../services/dbService';
 import { Inspection, Language } from '../types';
-import { Search, Eye } from 'lucide-react';
+import { Search, Eye, Check } from 'lucide-react';
 import { t } from '../i18n';
 
 interface HistoryProps {
   onView: (id: string) => void;
   lang: Language;
 }
+
+const formatVND = (amount: number) => {
+    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+};
 
 export const History: React.FC<HistoryProps> = ({ onView, lang }) => {
   const [list, setList] = useState<Inspection[]>([]);
@@ -44,7 +49,7 @@ export const History: React.FC<HistoryProps> = ({ onView, lang }) => {
                             <th className="p-4 font-semibold text-slate-700">{t(lang, 'date')}</th>
                             <th className="p-4 font-semibold text-slate-700">{t(lang, 'iicl_tags')}</th>
                             <th className="p-4 font-semibold text-slate-700">{t(lang, 'status')}</th>
-                            <th className="p-4 font-semibold text-slate-700">{t(lang, 'defects_detected')}</th>
+                            <th className="p-4 font-semibold text-slate-700">{t(lang, 'quote')}</th>
                             <th className="p-4 font-semibold text-slate-700 text-right">{t(lang, 'action')}</th>
                         </tr>
                     </thead>
@@ -78,7 +83,10 @@ export const History: React.FC<HistoryProps> = ({ onView, lang }) => {
                                         {t(lang, i.status.toLowerCase() as any) || i.status}
                                     </span>
                                 </td>
-                                <td className="p-4 text-slate-500">{i.defects.length}</td>
+                                <td className="p-4 font-mono text-slate-700">
+                                    {i.quote ? formatVND(i.quote.total) : '-'}
+                                    {i.quote?.status === 'APPROVED' && <Check className="inline w-3 h-3 ml-1 text-green-500" />}
+                                </td>
                                 <td className="p-4 text-right">
                                     <button 
                                         onClick={() => onView(i.id)}

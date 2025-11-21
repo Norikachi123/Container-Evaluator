@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { PricingRule, Language, DefectCode, Severity } from '../types';
 import { getPricingRules, savePricingRules } from '../services/dbService';
@@ -50,7 +51,7 @@ export const Pricing: React.FC<PricingProps> = ({ lang }) => {
                 <tr>
                     <th className="p-4 font-semibold text-slate-700">Defect Type</th>
                     <th className="p-4 font-semibold text-slate-700">Severity</th>
-                    <th className="p-4 font-semibold text-slate-700">{t(lang, 'base_price')} ($)</th>
+                    <th className="p-4 font-semibold text-slate-700">{t(lang, 'base_price')}</th>
                     <th className="p-4 font-semibold text-slate-700">{t(lang, 'labor_hours')} (h)</th>
                 </tr>
             </thead>
@@ -71,7 +72,8 @@ export const Pricing: React.FC<PricingProps> = ({ lang }) => {
                             <input 
                                 type="number" 
                                 min="0"
-                                className="w-24 px-2 py-1 border border-slate-300 rounded"
+                                step="1000"
+                                className="w-32 px-2 py-1 border border-slate-300 rounded"
                                 value={rule.basePrice}
                                 onChange={(e) => handleChange(rule.id, 'basePrice', parseFloat(e.target.value))}
                             />

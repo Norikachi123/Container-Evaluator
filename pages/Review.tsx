@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { Inspection, ReviewStatus, Severity, UserRole, User, Language, QuoteStatus } from '../types';
 import { getInspectionById, updateInspection, getNextPendingManifestItem } from '../services/dbService';
@@ -14,6 +15,10 @@ interface ReviewProps {
   onNextContainer: (containerNumber: string) => void;
   lang: Language;
 }
+
+const formatVND = (amount: number) => {
+    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+};
 
 export const Review: React.FC<ReviewProps> = ({ inspectionId, user, onBack, onNextContainer, lang }) => {
   const [inspection, setInspection] = useState<Inspection | null>(null);
@@ -53,8 +58,6 @@ export const Review: React.FC<ReviewProps> = ({ inspectionId, user, onBack, onNe
     const tempInspection = { ...inspection, defects: updatedDefects };
     const newQuote = generateQuote(tempInspection);
     
-    // If we are modifying, we might want to reset approval, but for MVP we keep it simple or check logic
-    // For now, just update the quote numbers
     const updatedInspection = { 
         ...tempInspection, 
         quote: { ...newQuote, status: inspection.quote?.status === QuoteStatus.APPROVED ? QuoteStatus.DRAFT : newQuote.status } 
@@ -104,7 +107,7 @@ export const Review: React.FC<ReviewProps> = ({ inspectionId, user, onBack, onNe
     
     if (inspection.quote) {
          doc.text(`Quote Status: ${inspection.quote.status}`, 10, 50);
-         doc.text(`Total Estimated Cost: $${inspection.quote.total.toFixed(2)}`, 10, 60);
+         doc.text(`Total Estimated Cost: ${formatVND(inspection.quote.total)}`, 10, 60);
     }
 
     let y = 80;
@@ -116,7 +119,7 @@ export const Review: React.FC<ReviewProps> = ({ inspectionId, user, onBack, onNe
         const status = d.status === ReviewStatus.REJECTED ? '(REJECTED)' : '';
         const img = inspection.images.find(i => i.id === d.imageId);
         const sideName = img ? tSide(lang, img.side) : 'Unknown';
-        const cost = d.repairCost ? `$${d.repairCost.toFixed(2)}` : '$0.00';
+        const cost = d.repairCost ? formatVND(d.repairCost) : formatVND(0);
         
         doc.text(`- [${sideName}] ${tDefect(lang, d.code)} (${d.severity}) - ${cost} ${status}`, 10, y);
         y += 10;
@@ -267,13 +270,13 @@ export const Review: React.FC<ReviewProps> = ({ inspectionId, user, onBack, onNe
                                     {isReviewer ? (
                                         <input 
                                             type="number" 
-                                            className="w-16 text-right text-xs border rounded px-1 py-0.5" 
+                                            className="w-24 text-right text-xs border rounded px-1 py-0.5" 
                                             value={d.repairCost || 0}
                                             onClick={(e) => e.stopPropagation()}
                                             onChange={(e) => handleCostChange(d.id, parseFloat(e.target.value))}
                                         />
                                     ) : (
-                                        <span className="text-xs font-mono">${(d.repairCost || 0).toFixed(2)}</span>
+                                        <span className="text-xs font-mono">{formatVND(d.repairCost || 0)}</span>
                                     )}
                                 </div>
                             )}
@@ -306,15 +309,15 @@ export const Review: React.FC<ReviewProps> = ({ inspectionId, user, onBack, onNe
                     <div className="space-y-1 text-sm text-slate-600 mb-3">
                         <div className="flex justify-between">
                             <span>{t(lang, 'subtotal')}</span>
-                            <span className="font-mono">${quote.subtotal.toFixed(2)}</span>
+                            <span className="font-mono">{formatVND(quote.subtotal)}</span>
                         </div>
                         <div className="flex justify-between">
                             <span>{t(lang, 'tax')}</span>
-                            <span className="font-mono">${quote.tax.toFixed(2)}</span>
+                            <span className="font-mono">{formatVND(quote.tax)}</span>
                         </div>
                         <div className="flex justify-between font-bold text-slate-800 text-base pt-2 border-t border-slate-200">
                             <span>{t(lang, 'total')}</span>
-                            <span className="font-mono">${quote.total.toFixed(2)}</span>
+                            <span className="font-mono">{formatVND(quote.total)}</span>
                         </div>
                     </div>
                     {isReviewer && quote.status !== QuoteStatus.APPROVED && (

@@ -1,25 +1,36 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { Defect, DefectCode, Severity, ReviewStatus } from '../types';
+import { Defect, DefectCode, Severity, ReviewStatus, Language } from '../types';
 
 const MODEL_NAME = 'gemini-2.5-flash';
 
 // Helper to clean base64 string
 const cleanBase64 = (b64: string) => b64.replace(/^data:image\/(png|jpg|jpeg);base64,/, "");
 
+// Helper to extract MIME type and data from base64 string
+const getMimeType = (base64String: string) => {
+  const match = base64String.match(/^data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+);base64,/);
+  return match ? match[1] : 'image/jpeg';
+};
+
+const getBase64Data = (base64String: string) => {
+  return base64String.replace(/^data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+);base64,/, "");
+};
+
 export const analyzeImage = async (
   base64Image: string, 
   containerNumber: string,
   imageId: string,
-  side: string
+  side: string,
+  lang: Language
 ): Promise<Defect[]> => {
   
-
   if (!process.env.API_KEY) {
     console.error("API Key missing");
     throw new Error("API Key missing");
   }
 
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const targetLanguage = lang === 'vi' ? 'Vietnamese' : 'English';
 
   const prompt = `
     You are an expert IICL certified shipping container inspector.
@@ -50,18 +61,21 @@ export const analyzeImage = async (
     1. Assign the correct code from the list above.
     2. Estimate severity (LOW, MEDIUM, HIGH).
     3. Provide a confidence score (0.0 to 1.0).
-    4. Describe the defect briefly.
+    4. Describe the defect briefly in ${targetLanguage}.
     5. Define a bounding box as percentage coordinates [ymin, xmin, ymax, xmax] (0-100).
     
     If no defects are found, return an empty list.
   `;
 
   try {
+    const mimeType = getMimeType(base64Image);
+    const data = getBase64Data(base64Image);
+
     const response = await ai.models.generateContent({
       model: MODEL_NAME,
       contents: {
         parts: [
-            { inlineData: { mimeType: 'image/jpeg', data: cleanBase64(base64Image) } },
+            { inlineData: { mimeType, data } },
             { text: prompt }
         ]
       },
@@ -131,26 +145,34 @@ export const readContainerNumber = async (base64Image: string): Promise<string |
     Standard format is 4 letters (Owner Code) followed by 6 digits (Serial Number) and 1 digit (Check Digit). 
     Example: ABCD 123456 7
     
-    Return ONLY the alphanumeric string without spaces or special characters. 
-    If you cannot clearly see a container number, return "null".
+    Return ONLY the alphanumeric string. Do not include any other text.
+    If the image does not clearly show a container number, return "null".
+    Remove any spaces or dashes from the result.
   `;
 
   try {
+    const mimeType = getMimeType(base64Image);
+    const data = getBase64Data(base64Image);
+
     const response = await ai.models.generateContent({
       model: MODEL_NAME,
       contents: {
         parts: [
-            { inlineData: { mimeType: 'image/jpeg', data: cleanBase64(base64Image) } },
+            { inlineData: { mimeType, data } },
             { text: prompt }
         ]
       }
     });
     
     const text = response.text?.trim();
-    if (!text || text.toLowerCase() === 'null') return null;
+    if (!text || text.toLowerCase().includes('null')) return null;
     
-    // Basic cleanup: remove spaces, dashes
-    const cleaned = text.replace(/[^A-Z0-9]/gi, '');
+    // Basic cleanup: remove spaces, dashes, ensure uppercase
+    const cleaned = text.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    
+    // Basic validation: at least 4 letters and some digits
+    if (cleaned.length < 4) return null;
+
     return cleaned;
   } catch (error) {
     console.error("OCR Failed:", error);

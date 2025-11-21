@@ -52,7 +52,8 @@ export const Capture: React.FC<CaptureProps> = ({ user, onComplete, lang, initia
         const base64 = reader.result as string;
         setImages(prev => ({ ...prev, [side]: base64 }));
 
-        // Auto-OCR if uploading DOOR_EXT (Door Wall) and no container number is set
+        // Auto-OCR if uploading DOOR_EXT (Door Wall)
+        // We check !initialContainerNumber to avoid overwriting a queued item ID.
         if (side === 'DOOR_EXT' && !initialContainerNumber) {
              setIsScanning(true);
              try {
@@ -104,7 +105,8 @@ export const Capture: React.FC<CaptureProps> = ({ user, onComplete, lang, initia
               url: base64
           });
 
-          const defects = await analyzeImage(base64, containerNum, imageId, side);
+          // Pass lang to analyzeImage for localized responses
+          const defects = await analyzeImage(base64, containerNum, imageId, side, lang);
           allDefects.push(...defects);
           
           completedImages++;

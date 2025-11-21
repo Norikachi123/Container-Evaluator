@@ -34,7 +34,8 @@ export const MOCK_USERS = [
   { id: 'u3', name: 'Admin User', role: UserRole.ADMIN },
 ];
 
-export const DEFAULT_LABOR_RATE = 500000; // VND per hour
+// Pricing Constants (Exchange rate approx $1 = 27,000 VND)
+export const DEFAULT_LABOR_RATE = 1215000; // $45 * 27000 VND
 export const TAX_RATE = 0.10; // 10%
 
 // Mock pricing rules generator
@@ -42,15 +43,16 @@ export const generateDefaultPricingRules = (): PricingRule[] => {
   const rules: PricingRule[] = [];
   Object.values(DefectCode).forEach(code => {
     [Severity.LOW, Severity.MEDIUM, Severity.HIGH].forEach(severity => {
-      let basePrice = 500000; // 500k VND base
+      // Base price ~$20 * 27000
+      let basePrice = 540000; 
       let laborHours = 0.5;
 
       if (severity === Severity.MEDIUM) { basePrice *= 2; laborHours *= 1.5; }
       if (severity === Severity.HIGH) { basePrice *= 4; laborHours *= 2.5; }
       
       // Specific overrides
-      if (code === DefectCode.HO) { basePrice += 1000000; laborHours += 1; } // Holes are expensive
-      if (code === DefectCode.CO) { basePrice += 200000; } // Rust treatment
+      if (code === DefectCode.HO) { basePrice += 1350000; laborHours += 1; } // Holes are expensive (+$50)
+      if (code === DefectCode.CO) { basePrice += 270000; } // Rust treatment (+$10)
 
       rules.push({
         id: `rule-${code}-${severity}`,

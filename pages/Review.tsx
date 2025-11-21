@@ -266,11 +266,10 @@ export const Review: React.FC<ReviewProps> = ({ inspectionId, user, onBack, onNe
                             </div>
                             {d.status !== ReviewStatus.REJECTED && (
                                 <div className="flex items-center space-x-1">
-                                    <DollarSign className="w-3 h-3 text-slate-400" />
                                     {isReviewer ? (
                                         <input 
                                             type="number" 
-                                            className="w-24 text-right text-xs border rounded px-1 py-0.5" 
+                                            className="w-28 text-right text-xs border rounded px-1 py-0.5" 
                                             value={d.repairCost || 0}
                                             onClick={(e) => e.stopPropagation()}
                                             onChange={(e) => handleCostChange(d.id, parseFloat(e.target.value))}

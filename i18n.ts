@@ -41,7 +41,7 @@ export const TRANSLATIONS = {
     next_containers: "Next Container",
     iicl_tags: "IICL Tags",
     
-    // Quote / Pricing
+     // Quote / Pricing / Invoice
     quote: "Quote",
     estimated_cost: "Estimated Cost",
     subtotal: "Subtotal",
@@ -49,6 +49,18 @@ export const TRANSLATIONS = {
     total: "Total",
     approve_quote: "Approve Quote",
     quote_approved: "Quote Approved",
+    create_invoice: "Create Invoice",
+    download_invoice: "Download Invoice",
+    invoice_details: "Invoice Details",
+    invoice_number: "Invoice #",
+    invoice_date: "Invoice Date",
+    due_date: "Due Date",
+    bill_to: "Bill To",
+    customer_name: "Customer Name",
+    customer_address: "Address",
+    cancel: "Cancel",
+    generate: "Generate",
+    
     labor: "Labor",
     parts: "Parts",
     hours: "hrs",
@@ -143,7 +155,7 @@ export const TRANSLATIONS = {
     next_containers: "Container tiếp theo",
     iicl_tags: "Thẻ IICL",
     
-    // Quote / Pricing
+     // Quote / Pricing / Invoice
     quote: "Báo giá",
     estimated_cost: "Chi phí dự kiến",
     subtotal: "Tạm tính",
@@ -151,6 +163,18 @@ export const TRANSLATIONS = {
     total: "Tổng cộng",
     approve_quote: "Duyệt báo giá",
     quote_approved: "Đã duyệt",
+    create_invoice: "Tạo hóa đơn",
+    download_invoice: "Tải hóa đơn",
+    invoice_details: "Thông tin hóa đơn",
+    invoice_number: "Số hóa đơn",
+    invoice_date: "Ngày hóa đơn",
+    due_date: "Hạn thanh toán",
+    bill_to: "Khách hàng",
+    customer_name: "Tên khách hàng",
+    customer_address: "Địa chỉ",
+    cancel: "Hủy",
+    generate: "Tạo",
+
     labor: "Nhân công",
     parts: "Vật tư",
     hours: "giờ",

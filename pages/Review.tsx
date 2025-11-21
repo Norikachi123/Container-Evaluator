@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Inspection, ReviewStatus, Severity, UserRole, User, Language, QuoteStatus } from '../types';
+import { Inspection, ReviewStatus, Severity, UserRole, User, Language, QuoteStatus, InvoiceDetails } from '../types';
 import { getInspectionById, updateInspection, getNextPendingManifestItem } from '../services/dbService';
 import { generateQuote } from '../services/pricingService';
 import { BoundingBoxDisplay } from '../components/BoundingBoxDisplay';
-import { Check, X, ChevronLeft, FileText, Image as ImageIcon, ArrowRight, DollarSign, Lock } from 'lucide-react';
+import { Check, X, ChevronLeft, FileText, Image as ImageIcon, ArrowRight, DollarSign, Lock, Receipt } from 'lucide-react';
 import jsPDF from 'jspdf';
 import { t, tSide, tDefect } from '../i18n';
 
@@ -31,6 +31,11 @@ export const Review: React.FC<ReviewProps> = ({ inspectionId, user, onBack, onNe
   const [activeImageId, setActiveImageId] = useState<string | null>(null);
   const [imgRef, setImgRef] = useState<HTMLImageElement | null>(null);
   const [nextContainer, setNextContainer] = useState<string | null>(null);
+  
+  // Invoice Modal State
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [customerName, setCustomerName] = useState('');
+  const [customerAddress, setCustomerAddress] = useState('');
 
   useEffect(() => {
     const data = getInspectionById(inspectionId);
@@ -38,6 +43,11 @@ export const Review: React.FC<ReviewProps> = ({ inspectionId, user, onBack, onNe
       setInspection(data);
       if (data.images.length > 0) setActiveImageId(data.images[0].id);
       if (data.defects.length > 0) setSelectedDefectId(data.defects[0].id);
+      
+      if (data.quote?.invoiceDetails) {
+          setCustomerName(data.quote.invoiceDetails.customerName);
+          setCustomerAddress(data.quote.invoiceDetails.customerAddress);
+      }
     }
     const pending = getNextPendingManifestItem();
     if (pending) setNextContainer(pending.containerNumber);
@@ -98,14 +108,145 @@ export const Review: React.FC<ReviewProps> = ({ inspectionId, user, onBack, onNe
       updateInspection(updatedInspection);
   };
 
-  const generatePDF = () => {
+  const generateInvoice = () => {
+      if (!inspection || !inspection.quote) return;
+      
+      const now = new Date();
+      const dueDate = new Date();
+      dueDate.setDate(now.getDate() + 30);
+
+      const invoiceDetails: InvoiceDetails = {
+          invoiceNumber: `INV-${now.getFullYear()}-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`,
+          invoiceDate: now.toISOString(),
+          dueDate: dueDate.toISOString(),
+          customerName,
+          customerAddress
+      };
+
+      const updatedInspection: Inspection = {
+          ...inspection,
+          quote: { 
+              ...inspection.quote, 
+              status: QuoteStatus.INVOICED,
+              invoiceDetails 
+          }
+      };
+
+      setInspection(updatedInspection);
+      updateInspection(updatedInspection);
+      setShowInvoiceModal(false);
+      generateInvoicePDF(updatedInspection);
+  };
+
+  // Specific PDF generator for Invoice
+  const generateInvoicePDF = (insp: Inspection) => {
+      if (!insp.quote || !insp.quote.invoiceDetails) return;
+      
+      const doc = new jsPDF();
+      const details = insp.quote.invoiceDetails;
+      
+      // Header
+      doc.setFont("times", "bold");
+      doc.setFontSize(24);
+      doc.text("INVOICE", 160, 20, { align: "right" });
+      
+      doc.setFontSize(14);
+      doc.text("ContainerAI Solutions", 15, 20);
+      doc.setFont("times", "normal");
+      doc.setFontSize(10);
+      doc.text("123 Port Logistics Blvd", 15, 26);
+      doc.text("Ho Chi Minh City, Vietnam", 15, 31);
+      doc.text("Tax ID: 0123456789", 15, 36);
+
+      // Invoice Meta
+      doc.setFont("times", "bold");
+      doc.text("Invoice #:", 140, 35);
+      doc.text("Date:", 140, 40);
+      doc.text("Due Date:", 140, 45);
+      
+      doc.setFont("times", "normal");
+      doc.text(details.invoiceNumber, 170, 35);
+      doc.text(new Date(details.invoiceDate).toLocaleDateString(), 170, 40);
+      doc.text(new Date(details.dueDate).toLocaleDateString(), 170, 45);
+
+      // Bill To
+      doc.setFont("times", "bold");
+      doc.text("Bill To:", 15, 55);
+      doc.setFont("times", "normal");
+      doc.text(details.customerName, 15, 62);
+      const splitAddress = doc.splitTextToSize(details.customerAddress, 80);
+      doc.text(splitAddress, 15, 68);
+
+      // Container Info
+      doc.setFont("times", "bold");
+      doc.text(`Container No: ${insp.containerNumber}`, 15, 90);
+
+      // Table Header
+      let y = 100;
+      doc.setFillColor(240, 240, 240);
+      doc.rect(15, y - 6, 180, 8, 'F');
+      doc.setFont("times", "bold");
+      doc.text("Description", 20, y);
+      doc.text("Price", 185, y, { align: "right" });
+      
+      y += 10;
+      doc.setFont("times", "normal");
+
+      // Items
+      insp.defects.forEach((d) => {
+          if (d.status !== ReviewStatus.REJECTED) {
+              const desc = `Repair: ${tDefect(lang, d.code)} - ${d.severity} (${tSide(lang, inspection.images.find(i => i.id === d.imageId)?.side || '')})`;
+              const price = d.repairCost || 0;
+              
+              doc.text(desc, 20, y);
+              doc.text(formatVNDForPDF(price), 185, y, { align: "right" });
+              y += 8;
+              
+              if (y > 270) {
+                  doc.addPage();
+                  y = 20;
+              }
+          }
+      });
+
+      y += 5;
+      doc.line(15, y, 195, y);
+      y += 10;
+
+      // Totals
+      doc.setFont("times", "normal");
+      doc.text("Subtotal:", 140, y);
+      doc.text(formatVNDForPDF(insp.quote.subtotal), 185, y, { align: "right" });
+      
+      y += 8;
+      doc.text("Tax (10%):", 140, y);
+      doc.text(formatVNDForPDF(insp.quote.tax), 185, y, { align: "right" });
+      
+      y += 10;
+      doc.setFont("times", "bold");
+      doc.setFontSize(12);
+      doc.text("Total:", 140, y);
+      doc.text(formatVNDForPDF(insp.quote.total), 185, y, { align: "right" });
+
+      // Footer (Bank Info)
+      doc.setFontSize(10);
+      doc.setFont("times", "bold");
+      const footerY = 260;
+      doc.text("Payment Instructions:", 15, footerY);
+      doc.setFont("times", "normal");
+      doc.text("Bank: Vietcombank", 15, footerY + 6);
+      doc.text("Account Name: ContainerAI Corp", 15, footerY + 11);
+      doc.text("Account Number: 1234 5678 9012", 15, footerY + 16);
+      
+      doc.save(`${details.invoiceNumber}.pdf`);
+  };
+
+  const generateReportPDF = () => {
     if (!inspection) return;
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     const margin = 15;
     const contentWidth = pageWidth - (margin * 2);
-    
-    // Use Times New Roman ('times')
     
     // --- Page 1: Summary ---
     doc.setFont("times", "bold");
@@ -139,7 +280,6 @@ export const Review: React.FC<ReviewProps> = ({ inspectionId, user, onBack, onNe
       doc.setFontSize(10);
       doc.setFont("times", "normal");
       doc.text(`Subtotal:`, margin + 5, y + 20);
-      // Use PDF safe currency format
       doc.text(`${formatVNDForPDF(inspection.quote.subtotal)}`, pageWidth - margin - 5, y + 20, { align: "right" });
       
       doc.text(`Tax (10%):`, margin + 5, y + 27);
@@ -153,24 +293,20 @@ export const Review: React.FC<ReviewProps> = ({ inspectionId, user, onBack, onNe
     }
     
     // --- Detailed Pages: Images & Defects ---
-    
     const sidesWithImages = inspection.images;
 
     sidesWithImages.forEach((img) => {
       doc.addPage();
       let yPos = 20;
       
-      // 1. Header: Side Name
       doc.setFont("times", "bold");
       doc.setFontSize(14);
       doc.text(tSide(lang, img.side), margin, yPos);
       yPos += 10;
       
-      // 2. Image
       const imgHeight = 100; 
       doc.addImage(img.url, 'JPEG', margin, yPos, contentWidth, imgHeight, undefined, 'FAST');
       
-      // 3. Bounding Boxes
       const sideDefects = inspection.defects.filter(d => d.imageId === img.id && d.status !== ReviewStatus.REJECTED);
       
       sideDefects.forEach((d, i) => {
@@ -195,7 +331,6 @@ export const Review: React.FC<ReviewProps> = ({ inspectionId, user, onBack, onNe
       
       yPos += imgHeight + 10;
       
-      // 4. Defect List
       if (sideDefects.length > 0) {
         doc.setTextColor(0, 0, 0);
         doc.setFontSize(10);
@@ -208,7 +343,6 @@ export const Review: React.FC<ReviewProps> = ({ inspectionId, user, onBack, onNe
            doc.setFontSize(10);
            
            const cost = d.repairCost ? formatVNDForPDF(d.repairCost) : formatVNDForPDF(0);
-           // Clean string construction to avoid extra spaces
            const label = `${i + 1}. [${tDefect(lang, d.code)}] ${d.severity} - ${cost}`;
            
            doc.text(label, margin, yPos);
@@ -258,8 +392,8 @@ export const Review: React.FC<ReviewProps> = ({ inspectionId, user, onBack, onNe
                         {t(lang, inspection.status.toLowerCase() as any) || inspection.status}
                     </span>
                     {quote && (
-                        <span className={`px-2 py-0.5 rounded-full font-medium flex items-center space-x-1 ${quote.status === QuoteStatus.APPROVED ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'}`}>
-                            <DollarSign className="w-3 h-3" />
+                        <span className={`px-2 py-0.5 rounded-full font-medium flex items-center space-x-1 ${quote.status === QuoteStatus.INVOICED ? 'bg-purple-100 text-purple-800' : quote.status === QuoteStatus.APPROVED ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'}`}>
+                            {quote.status === QuoteStatus.INVOICED ? <Receipt className="w-3 h-3" /> : <DollarSign className="w-3 h-3" />}
                             <span>{quote.status}</span>
                         </span>
                     )}
@@ -268,7 +402,7 @@ export const Review: React.FC<ReviewProps> = ({ inspectionId, user, onBack, onNe
         </div>
         <div className="flex space-x-2">
             <button 
-                onClick={generatePDF}
+                onClick={generateReportPDF}
                 className="hidden sm:flex items-center space-x-2 px-3 py-1.5 bg-white border border-slate-300 text-slate-700 rounded-md text-sm hover:bg-slate-50"
             >
                 <FileText className="w-4 h-4" />
@@ -290,6 +424,7 @@ export const Review: React.FC<ReviewProps> = ({ inspectionId, user, onBack, onNe
         
         {/* Image Area */}
         <div className="flex-1 bg-slate-900 relative flex flex-col overflow-hidden">
+             {/* View Tabs */}
              <div className="flex overflow-x-auto bg-slate-800 border-b border-slate-700 p-1 space-x-1 scrollbar-hide">
                 {inspection.images.map(img => (
                     <button
@@ -372,7 +507,7 @@ export const Review: React.FC<ReviewProps> = ({ inspectionId, user, onBack, onNe
                             </div>
                             {d.status !== ReviewStatus.REJECTED && (
                                 <div className="flex items-center space-x-1">
-                                    {isReviewer ? (
+                                    {isReviewer && quote?.status === QuoteStatus.DRAFT ? (
                                         <input 
                                             type="number" 
                                             className="w-28 text-right text-xs border rounded px-1 py-0.5" 
@@ -388,7 +523,7 @@ export const Review: React.FC<ReviewProps> = ({ inspectionId, user, onBack, onNe
                         </div>
                         <p className="text-xs text-slate-600 line-clamp-2 mb-2">{d.description}</p>
                         
-                        {selectedDefectId === d.id && isReviewer && (
+                        {selectedDefectId === d.id && isReviewer && quote?.status === QuoteStatus.DRAFT && (
                             <div className="flex space-x-2 mt-2 pt-2 border-t border-slate-100">
                                 <button 
                                     onClick={(e) => { e.stopPropagation(); handleDefectAction(d.id, ReviewStatus.ACCEPTED); }}
@@ -425,7 +560,8 @@ export const Review: React.FC<ReviewProps> = ({ inspectionId, user, onBack, onNe
                             <span className="font-mono">{formatVND(quote.total)}</span>
                         </div>
                     </div>
-                    {isReviewer && quote.status !== QuoteStatus.APPROVED && (
+                    
+                    {isReviewer && quote.status === QuoteStatus.DRAFT && (
                         <button 
                             onClick={approveQuote}
                             className="w-full py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold text-sm flex items-center justify-center space-x-2 transition-colors shadow-sm"
@@ -434,16 +570,81 @@ export const Review: React.FC<ReviewProps> = ({ inspectionId, user, onBack, onNe
                             <span>{t(lang, 'approve_quote')}</span>
                         </button>
                     )}
+                    
                     {quote.status === QuoteStatus.APPROVED && (
-                        <div className="w-full py-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg text-sm font-medium text-center flex items-center justify-center space-x-2">
-                            <Lock className="w-3 h-3" />
-                            <span>{t(lang, 'quote_approved')} by {quote.approvedBy}</span>
+                        <div className="space-y-2">
+                            <div className="w-full py-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg text-sm font-medium text-center flex items-center justify-center space-x-2">
+                                <Lock className="w-3 h-3" />
+                                <span>{t(lang, 'quote_approved')}</span>
+                            </div>
+                            {isReviewer && (
+                                <button 
+                                    onClick={() => setShowInvoiceModal(true)}
+                                    className="w-full py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold text-sm flex items-center justify-center space-x-2 transition-colors shadow-sm"
+                                >
+                                    <Receipt className="w-4 h-4" />
+                                    <span>{t(lang, 'create_invoice')}</span>
+                                </button>
+                            )}
                         </div>
+                    )}
+
+                    {quote.status === QuoteStatus.INVOICED && (
+                        <button 
+                            onClick={() => generateInvoicePDF(inspection)}
+                            className="w-full py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-lg font-semibold text-sm flex items-center justify-center space-x-2 transition-colors shadow-sm"
+                        >
+                            <Receipt className="w-4 h-4" />
+                            <span>{t(lang, 'download_invoice')}</span>
+                        </button>
                     )}
                 </div>
             )}
         </div>
       </div>
+
+      {/* Invoice Modal */}
+      {showInvoiceModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-xl shadow-lg max-w-md w-full p-6">
+                  <h3 className="text-lg font-bold text-slate-800 mb-4">{t(lang, 'invoice_details')}</h3>
+                  <div className="space-y-4">
+                      <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-1">{t(lang, 'customer_name')}</label>
+                          <input 
+                              type="text" 
+                              className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                              value={customerName}
+                              onChange={(e) => setCustomerName(e.target.value)}
+                          />
+                      </div>
+                      <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-1">{t(lang, 'customer_address')}</label>
+                          <textarea 
+                              className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none h-24"
+                              value={customerAddress}
+                              onChange={(e) => setCustomerAddress(e.target.value)}
+                          />
+                      </div>
+                  </div>
+                  <div className="flex space-x-3 mt-6">
+                      <button 
+                          onClick={() => setShowInvoiceModal(false)}
+                          className="flex-1 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 font-medium"
+                      >
+                          {t(lang, 'cancel')}
+                      </button>
+                      <button 
+                          onClick={generateInvoice}
+                          disabled={!customerName || !customerAddress}
+                          className="flex-1 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium disabled:opacity-50"
+                      >
+                          {t(lang, 'generate')}
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
     </div>
   );
 };

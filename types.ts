@@ -1,4 +1,3 @@
-
 export enum UserRole {
   INSPECTOR = 'INSPECTOR',
   REVIEWER = 'REVIEWER',
@@ -46,7 +45,7 @@ export enum ReviewStatus {
   REJECTED = 'REJECTED'
 }
 
-// Updated Container Sides based on specific request
+// Updated Container Sides
 export type ContainerSide = 
   // Exterior
   | 'SIDE_1_EXT' // Side Wall 1 (Left)
@@ -99,6 +98,14 @@ export enum QuoteStatus {
   INVOICED = 'INVOICED'
 }
 
+export interface InvoiceDetails {
+  invoiceNumber: string;
+  invoiceDate: string;
+  dueDate: string;
+  customerName: string;
+  customerAddress: string;
+}
+
 export interface Quote {
   subtotal: number;
   tax: number;
@@ -107,6 +114,7 @@ export interface Quote {
   status: QuoteStatus;
   generatedAt: string;
   approvedBy?: string;
+  invoiceDetails?: InvoiceDetails;
 }
 
 export interface Inspection {

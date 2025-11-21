@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Inspection, ReviewStatus, Severity, UserRole, User, Language, QuoteStatus } from '../types';
 import { getInspectionById, updateInspection, getNextPendingManifestItem } from '../services/dbService';
@@ -54,7 +53,6 @@ export const Review: React.FC<ReviewProps> = ({ inspectionId, user, onBack, onNe
       d.id === defectId ? { ...d, status: action } : d
     );
 
-    // Recalculate quote based on new statuses
     const tempInspection = { ...inspection, defects: updatedDefects };
     const newQuote = generateQuote(tempInspection);
     
@@ -75,7 +73,6 @@ export const Review: React.FC<ReviewProps> = ({ inspectionId, user, onBack, onNe
       const tempInspection = { ...inspection, defects: updatedDefects };
       const newQuote = generateQuote(tempInspection);
       
-      // Reset approval if cost changes
       const updatedInspection = { 
           ...tempInspection, 
           quote: { ...newQuote, status: QuoteStatus.DRAFT } 
@@ -98,32 +95,143 @@ export const Review: React.FC<ReviewProps> = ({ inspectionId, user, onBack, onNe
   const generatePDF = () => {
     if (!inspection) return;
     const doc = new jsPDF();
-    doc.setFontSize(18);
-    doc.text(`Inspection Report: ${inspection.containerNumber}`, 10, 10);
-    doc.setFontSize(12);
-    doc.text(`Inspector: ${inspection.inspectorId}`, 10, 20);
-    doc.text(`Date: ${new Date(inspection.timestamp).toLocaleString()}`, 10, 30);
-    doc.text(`Status: ${inspection.status}`, 10, 40);
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 15;
+    const contentWidth = pageWidth - (margin * 2);
     
-    if (inspection.quote) {
-         doc.text(`Quote Status: ${inspection.quote.status}`, 10, 50);
-         doc.text(`Total Estimated Cost: ${formatVND(inspection.quote.total)}`, 10, 60);
-    }
-
-    let y = 80;
-    doc.setFontSize(14);
-    doc.text("Defects & Costs:", 10, 70);
+    // --- Page 1: Summary ---
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(22);
+    doc.text(`Inspection Report`, margin, 20);
+    
+    doc.setFontSize(16);
+    doc.text(inspection.containerNumber, margin, 30);
+    
+    doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
+    doc.text(`Inspector: ${inspection.inspectorId}`, margin, 45);
+    doc.text(`Date: ${new Date(inspection.timestamp).toLocaleString()}`, margin, 50);
+    doc.text(`Location: ${inspection.location}`, margin, 55);
+    
+    // Status
+    doc.setFont("helvetica", "bold");
+    doc.text(`Status: ${inspection.status}`, margin, 65);
+    
+    // Financials Box
+    if (inspection.quote) {
+      let y = 75;
+      doc.setDrawColor(200, 200, 200); 
+      doc.setFillColor(245, 247, 250);
+      doc.rect(margin, y, contentWidth, 40, 'F');
+      
+      doc.setFontSize(14);
+      doc.setTextColor(30, 41, 59);
+      doc.text("Cost Estimate", margin + 5, y + 10);
+      
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.text(`Subtotal:`, margin + 5, y + 20);
+      doc.text(`${formatVND(inspection.quote.subtotal)}`, pageWidth - margin - 5, y + 20, { align: "right" });
+      
+      doc.text(`Tax (10%):`, margin + 5, y + 27);
+      doc.text(`${formatVND(inspection.quote.tax)}`, pageWidth - margin - 5, y + 27, { align: "right" });
+      
+      doc.setFont("helvetica", "bold");
+      doc.text(`Total:`, margin + 5, y + 35);
+      doc.text(`${formatVND(inspection.quote.total)}`, pageWidth - margin - 5, y + 35, { align: "right" });
+      
+      doc.setTextColor(0, 0, 0); // Reset color
+    }
+    
+    // --- Detailed Pages: Images & Defects ---
+    
+    // Filter only sides that have images
+    const sidesWithImages = inspection.images;
 
-    inspection.defects.forEach(d => {
-        const status = d.status === ReviewStatus.REJECTED ? '(REJECTED)' : '';
-        const img = inspection.images.find(i => i.id === d.imageId);
-        const sideName = img ? tSide(lang, img.side) : 'Unknown';
-        const cost = d.repairCost ? formatVND(d.repairCost) : formatVND(0);
+    sidesWithImages.forEach((img) => {
+      doc.addPage();
+      let yPos = 20;
+      
+      // 1. Header: Side Name
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
+      doc.text(tSide(lang, img.side), margin, yPos);
+      yPos += 10;
+      
+      // 2. Image
+      // fix image height to 100 units to fit nicely, width scaled automatically by aspect ratio
+      // Since we can't easily get aspect ratio from base64 in jsPDF without loading it, 
+      // we constrain by width and let height adjust, or constrain by height. 
+      // constrain by width to ensure it fits the page.
+      const imgHeight = 100; 
+      doc.addImage(img.url, 'JPEG', margin, yPos, contentWidth, imgHeight, undefined, 'FAST');
+      
+      // 3. Bounding Boxes on PDF
+      const sideDefects = inspection.defects.filter(d => d.imageId === img.id && d.status !== ReviewStatus.REJECTED);
+      
+      sideDefects.forEach((d, i) => {
+        const { ymin, xmin, ymax, xmax } = d.boundingBox;
         
-        doc.text(`- [${sideName}] ${tDefect(lang, d.code)} (${d.severity}) - ${cost} ${status}`, 10, y);
-        y += 10;
-        if (y > 280) { doc.addPage(); y = 10; }
+        // Convert % percentages to PDF coordinate system relative to the image
+        const pdfBoxX = margin + (xmin / 100) * contentWidth;
+        const pdfBoxY = yPos + (ymin / 100) * imgHeight;
+        const pdfBoxW = ((xmax - xmin) / 100) * contentWidth;
+        const pdfBoxH = ((ymax - ymin) / 100) * imgHeight;
+        
+        // Draw Box
+        doc.setDrawColor(220, 38, 38); // Red color
+        doc.setLineWidth(0.5);
+        doc.rect(pdfBoxX, pdfBoxY, pdfBoxW, pdfBoxH);
+        
+        // Draw Label Background
+        doc.setFillColor(220, 38, 38);
+        doc.rect(pdfBoxX, pdfBoxY - 4, 6, 4, 'F');
+        
+        // Draw Label Number
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(6);
+        doc.text(`${i + 1}`, pdfBoxX + 1, pdfBoxY - 1);
+      });
+      
+      yPos += imgHeight + 10;
+      
+      // 4. Defect List Table
+      if (sideDefects.length > 0) {
+        doc.setTextColor(0, 0, 0);
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "bold");
+        doc.text("Defects Found:", margin, yPos);
+        yPos += 8;
+        
+        sideDefects.forEach((d, i) => {
+           doc.setFont("helvetica", "normal");
+           doc.setFontSize(10);
+           
+           const cost = d.repairCost ? formatVND(d.repairCost) : formatVND(0);
+           const label = `${i + 1}. [${tDefect(lang, d.code)}] ${d.severity} - ${cost}`;
+           
+           doc.text(label, margin, yPos);
+           
+           // Description on next line
+           doc.setFontSize(9);
+           doc.setTextColor(80, 80, 80); // Dark gray
+           doc.text(`   ${d.description}`, margin, yPos + 5);
+           
+           doc.setTextColor(0, 0, 0); // Reset
+           yPos += 12;
+           
+           // Page break check if list is too long
+           if (yPos > 270) {
+               doc.addPage();
+               yPos = 20;
+           }
+        });
+      } else {
+          doc.setTextColor(100, 100, 100);
+          doc.setFontSize(10);
+          doc.setFont("helvetica", "italic");
+          doc.text("No defects detected on this side.", margin, yPos + 5);
+      }
     });
     
     doc.save(`report_${inspection.containerNumber}.pdf`);
